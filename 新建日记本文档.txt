@@ -1,0 +1,1205 @@
+
+           /*调用GIS*/
+            OPENLAYER_MAP.initAnchorLayer();
+            OPENLAYER_MAP.initQQLayer();
+            OPENLAYER_MAP.initGoogleLayer();
+            OPENLAYER_MAP.initMap();
+            OPENLAYER_MAP.initPopUpEvents();
+            OPENLAYER_MAP.echartLine();
+            console.log($(".container .mapList").html());
+            /*获取运维的路径*/
+            $("body").delegate(".mapList span","click",function(){
+                    var valueSrc = $(this).attr("value");
+                    var valueSrc1 =  valueSrc.substring(0,valueSrc.indexOf("?"));
+                    OPENLAYER_MAP.initPopUpEvents();
+                    $(".ol-overlay-container.ol-selectable").hide();
+                    $(this).addClass("backRgb").siblings("span").removeClass("backRgb");
+                    var urlValue = $(this).attr("value");
+                    if($(this).attr("value_id")=="1"){
+                        OPENLAYER_MAP.urlChange(valueSrc1+"/d_data_hourly_yyyys.json");
+                        OPENLAYER_MAP.initMarkers1();
+                    }else if($(this).attr("value_id")=="2"){
+                        OPENLAYER_MAP.urlChange(valueSrc1+"/overviews/alarm_map.json");    
+                        OPENLAYER_MAP.initMarkers2(); 
+                    }
+                     /*运维单独不显示--注释*/
+                    /*else if($(this).attr("value_id")=="3"){
+                        OPENLAYER_MAP.urlChange("http://172.168.10.7:3030/localize.json");
+                        OPENLAYER_MAP.initMarkers3();          
+                    }*/
+            });
+    })
+
+/*获取空气站地图*/
+var session = "<%= @current_user.session %>";
+var OPENLAYER_MAP = {};
+OPENLAYER_MAP.markerInfos1;    /*空气站获取数据*/
+OPENLAYER_MAP.markerInfos2;    /*水站获取数据*/
+OPENLAYER_MAP.markerInfos3;    /*运维获取数据*/
+OPENLAYER_MAP.urlChange;
+/*
+OPENLAYER_MAP.urlOperation; 运维函数一直显示图标
+OPENLAYER_MAP.urlOperation = function(){
+     $.ajax({
+         type:"get",
+         dataType:"JSON",
+         async: false,
+         url:"http://172.168.10.7:3030/localize.json?session="+session,
+         data:{
+            session:session
+         },
+         success:function(data){
+                console.log(data)
+             	mapDataOpration = data.stations;
+                OPENLAYER_MAP.markerInfos3=mapDataOpration;
+         },
+         error:function(err){
+             console.log(err);
+             OPENLAYER_MAP.markerInfos="";
+         }
+     });
+}
+*/
+OPENLAYER_MAP.urlChange = function(URL) {
+     $.ajax({
+         type:"get",
+         dataType:"JSON",
+         async: false,
+         url:URL,
+         data:{
+            session:session
+         },
+         success:function(data){
+             if($(".mapList span.backRgb").attr("value_id")=="1"){
+                mapData = data.d_station;
+                OPENLAYER_MAP.markerInfos1=mapData;
+             }else if($(".mapList span.backRgb").attr("value_id")=="2"){
+             	 mapData = data.station;
+                OPENLAYER_MAP.markerInfos2=mapData;                
+             }
+              /*运维单独不显示--注释*/
+             /*else if($(".mapList span.backRgb").attr("value_id")=="3"){
+                mapData = data.stations;
+                OPENLAYER_MAP.markerInfos3=mapData;
+             }*/
+         },
+         error:function(err){
+             console.log(err);
+             OPENLAYER_MAP.markerInfos="";
+         }
+     });
+    // OPENLAYER_MAP.urlOperation();
+};
+
+// 弹出框
+OPENLAYER_MAP.popContainer = document.getElementById('popup');//主体  
+OPENLAYER_MAP.popContent = document.getElementById('popup-content');//水站正文
+OPENLAYER_MAP.popContent1 = document.getElementById('popup-content');//水站正文   
+OPENLAYER_MAP.popCloser = document.getElementById('popup-closer');//关闭框 
+OPENLAYER_MAP.popUpItem = new ol.Overlay(({
+    element: OPENLAYER_MAP.popContainer,
+    autoPan: true,
+    autoPanAnimation: {
+      duration: 250
+    }
+  }));
+
+OPENLAYER_MAP.mapContainer = "#mapContainer";
+
+OPENLAYER_MAP.mousePositionControl;
+
+OPENLAYER_MAP.map;
+
+OPENLAYER_MAP.qqMapLayer;
+
+OPENLAYER_MAP.anchorLayer;
+
+OPENLAYER_MAP.googleMapLayer;
+
+OPENLAYER_MAP.keypointStyle1 = function (feature) {
+    //返回一个样式
+    return new ol.style.Style({
+        //把点的样式换成ICON图标
+        image: new ol.style.Icon({
+            //控制标注图片和文字之间的距离
+            anchor: [0.5, 20],
+            //标注样式的起点位置
+            anchorOrigin: 'top-right',
+            //X方向单位：分数
+            anchorXUnits: 'fraction',
+            //Y方向单位：像素
+            anchorYUnits: 'pixels',
+            //偏移起点位置的方向
+            offsetOrigin: 'top-right',
+            //透明度
+            opacity: 1,
+            scale:1,
+            //图片路径
+           // src: 'images/anchor.png'
+           src:'<%= image_path("map1.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1
+        }),
+        //文本样式
+        text: new ol.style.Text({
+            //对齐方式
+            textAlign: 'center',
+            //文本基线
+            textBaseline: 'middle',
+            //字体样式
+            font: 'normal 13px 微软雅黑',
+            //文本内容
+          //  text: feature.get('name'),
+            offsetY:-23,
+            //填充样式
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle2 = function (feature) {
+    //返回一个样式
+    return new ol.style.Style({
+        //把点的样式换成ICON图标
+        image: new ol.style.Icon({
+            //控制标注图片和文字之间的距离
+            anchor: [0.5, 20],
+            //标注样式的起点位置
+            anchorOrigin: 'top-right',
+            //X方向单位：分数
+            anchorXUnits: 'fraction',
+            //Y方向单位：像素
+            anchorYUnits: 'pixels',
+            //偏移起点位置的方向
+            offsetOrigin: 'top-right',
+            //透明度
+            opacity: 1,
+            scale:1,
+            //图片路径
+           // src: 'images/anchor.png'
+           src:'<%= image_path("map2.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1
+        }),
+        //文本样式
+        text: new ol.style.Text({
+            //对齐方式
+            textAlign: 'center',
+            //文本基线
+            textBaseline: 'middle',
+            //字体样式
+            font: 'normal 13px 微软雅黑',
+            //文本内容
+           // text: feature.get('name'),
+            offsetY:-23,
+            //填充样式
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle3 = function (feature) {
+    //返回一个样式
+    return new ol.style.Style({
+        //把点的样式换成ICON图标
+        image: new ol.style.Icon({
+            //控制标注图片和文字之间的距离
+            anchor: [0.5, 20],
+            //标注样式的起点位置
+            anchorOrigin: 'top-right',
+            //X方向单位：分数
+            anchorXUnits: 'fraction',
+            //Y方向单位：像素
+            anchorYUnits: 'pixels',
+            //偏移起点位置的方向
+            offsetOrigin: 'top-right',
+            //透明度
+            opacity: 1,
+            scale:1,
+            //图片路径
+           // src: 'images/anchor.png'
+           src:'<%= image_path("map3.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1
+        }),
+        //文本样式
+        text: new ol.style.Text({
+            //对齐方式
+            textAlign: 'center',
+            //文本基线
+            textBaseline: 'middle',
+            //字体样式
+            font: 'normal 13px 微软雅黑',
+            //文本内容
+            //text: feature.get('name'),
+            offsetY:-23,
+            //填充样式
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle4 = function (feature) {
+    //返回一个样式
+    return new ol.style.Style({
+        //把点的样式换成ICON图标
+        image: new ol.style.Icon({
+            //控制标注图片和文字之间的距离
+            anchor: [0.5, 20],
+            //标注样式的起点位置
+            anchorOrigin: 'top-right',
+            //X方向单位：分数
+            anchorXUnits: 'fraction',
+            //Y方向单位：像素
+            anchorYUnits: 'pixels',
+            //偏移起点位置的方向
+            offsetOrigin: 'top-right',
+            //透明度
+            opacity: 1,
+            scale:1,
+            //图片路径
+           // src: 'images/anchor.png'
+           src:'<%= image_path("map4.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1
+        }),
+        //文本样式
+        text: new ol.style.Text({
+            textAlign: 'center',
+            //文本基线
+            textBaseline: 'middle',
+            //字体样式
+            font: 'normal 13px 微软雅黑',
+            //文本内容
+           // text: feature.get('name'),
+            offsetY:-23,
+            //填充样式
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle5 = function (feature) {
+    return new ol.style.Style({
+        image: new ol.style.Icon({
+            anchor: [0.5, 20],
+            anchorOrigin: 'top-right',
+            anchorXUnits: 'fraction',
+            anchorYUnits: 'pixels',
+            offsetOrigin: 'top-right',
+            opacity: 1,
+            scale:1,
+           src:'<%= image_path("map5.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1,
+        }),
+        text: new ol.style.Text({
+            textAlign: 'center',
+            textBaseline: 'middle',
+            font: 'normal 13px 微软雅黑',
+            //text: feature.get('name'),
+            offsetY:-23,
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle6 = function (feature) {
+    //返回一个样式
+    return new ol.style.Style({
+        //把点的样式换成ICON图标
+        image: new ol.style.Icon({
+            anchor: [0.5, 20],
+            anchorOrigin: 'top-right',
+            anchorXUnits: 'fraction',
+            anchorYUnits: 'pixels',
+            //偏移起点位置的方向
+            offsetOrigin: 'top-right',
+            opacity: 1,
+            scale:1,
+           src:'<%= image_path("map6.jpg")%>'
+        }),
+        stroke: new ol.style.Stroke({
+            color: '#f00',
+            width: 1
+        }),
+        //文本样式
+        text: new ol.style.Text({
+            textAlign: 'center',
+            textBaseline: 'middle',
+            font: 'normal 13px 微软雅黑',
+           // text: feature.get('name'),
+            offsetY:-23,
+            fill: new ol.style.Fill({
+                color: '#333'
+            })
+            
+        })
+    });
+};
+OPENLAYER_MAP.keypointStyle7 = function (feature) {
+    return new ol.style.Style({
+        image: new ol.style.Icon({
+            anchor: [0.5, 20],
+            anchorOrigin: 'top-right',
+            anchorXUnits: 'fraction',
+            anchorYUnits: 'pixels',
+            offsetOrigin: 'top-right',
+            opacity:1,
+            scale:1,
+           src:'<%= image_path("map7.jpg")%>'
+        }),
+        text: new ol.style.Text({
+            textAlign: 'center',
+            textBaseline: 'middle',
+            font: 'normal 13px 微软雅黑',
+            border:'1px solid #f00',
+           // text: feature.get('name'),
+            offsetY:-23,
+            fill: new ol.style.Fill({
+                color: '#333',
+            }),
+        })
+    });
+};
+OPENLAYER_MAP.initAnchorLayer = function(){
+  OPENLAYER_MAP.anchorLayer = new ol.layer.Vector({
+    source: new ol.source.Vector(),
+    name:'anchorLayer'
+  })
+};
+
+OPENLAYER_MAP.initMap = function(){
+
+  OPENLAYER_MAP.mousePositionControl = new ol.control.MousePosition({
+        coordinateFormat: ol.coordinate.createStringXY(5),
+        projection: 'EPSG:4326',
+        className: 'custom-mouse-position',
+        target: document.getElementById('txt-coords'),
+        undefinedHTML: '&nbsp;'
+      });
+
+
+	var layers = [
+        OPENLAYER_MAP.googleMapLayer,
+        OPENLAYER_MAP.qqMapLayer,
+        new ol.layer.Tile({
+            name:'userDefineLayer',
+            source: new ol.source.TileWMS({
+               /* url: 'http://172.168.10.7:8080/geoserver/yangna_geoserverMap/wms',
+                params: {
+                    'LAYERS': 'yangna_geoserverMap:yangna_geoserver_group',
+                    'TILED': true
+                }*/
+                //url: 'http://localhost:8080/geoserver/yangna_xuchangRiver/wms',
+                params: {
+                   // 'LAYERS': 'yangna_xuchangRiver:水系_region',
+                    'TILED': true
+                }
+            })
+        }),
+        OPENLAYER_MAP.anchorLayer
+      	];
+
+    OPENLAYER_MAP.map = new ol.Map({
+      controls: ol.control.defaults({
+        attribution: false
+      }).extend([
+        new ol.control.ScaleLine({
+        //   units: 'degrees'
+        }),
+        OPENLAYER_MAP.mousePositionControl
+      ]),
+      layers: layers,
+      overlays: [OPENLAYER_MAP.popUpItem],
+      target: 'mapContainer',
+      view: new ol.View({
+        projection: 'EPSG:3857',
+        //center:ol.proj.fromLonLat([103.65,34.67]),
+         center:ol.proj.fromLonLat([113.85,34.03]),
+        zoom: 8,
+        minZoom:4,
+        maxZoom:15
+      })
+    });
+
+    OPENLAYER_MAP.googleMapLayer.setVisible(false);
+};
+
+OPENLAYER_MAP.initQQLayer = function(){
+
+    var baiduSource = new ol.source.XYZ({
+        tileUrlFunction: function(tileCoord){
+            if(!tileCoord)return "";
+
+            var z = tileCoord[0];
+            var x = tileCoord[1];
+            var y = -tileCoord[2] - 1;
+            y = parseInt(Math.pow(2, z)) - 1 - y;
+            return "http://rt" + (x % 4) + ".map.gtimg.com/realtimerender?z=" + z + "&x=" + x + "&y=" + y + "&styleid=0&type=vector&version=233";
+        }
+    });
+
+    OPENLAYER_MAP.qqMapLayer = new ol.layer.Tile({
+        name:'qqLayer',
+        source: baiduSource
+    });
+};
+
+OPENLAYER_MAP.initGoogleLayer = function(){
+    // var  baiduMap_source = new ol.source.XYZ({url: 'http://maps.google.com/maps/vt?pb=!1m5!1m4!1i{z}!2i{x}!3i{y}!4i256!2m3!1e0!2sm!3i375060738!3m9!2spl!3sUS!5e18!12m1!1e47!12m3!1e37!2m1!1ssmartmaps!4e0'}); //goole
+    var  baiduMap_source = new ol.source.XYZ({url: 'http://online.map.bdimg.com/onlinelabel/qt=tile&x={x}&y={y}&z={z}&v=009&styles=pl&udt=20170301&scaler=1&p=1'}); //baidu
+    OPENLAYER_MAP.googleMapLayer = new ol.layer.Tile({
+        source:  baiduMap_source,
+        name:'baidu'
+    });
+};
+/*空气站添加图标*/
+OPENLAYER_MAP.initMarkers1 = function(){
+    OPENLAYER_MAP.anchorLayer.getSource().clear();
+    OPENLAYER_MAP.popContent.innerHTML = "";
+    var navRouteCoords1 = OPENLAYER_MAP.markerInfos1;   //获取空气站JSON数据
+    //架路径，绘制关键节点
+    if(navRouteCoords1 == null || navRouteCoords1.length == 0)return;
+    console.log(navRouteCoords1)
+    var routeLinePoints= new Array();
+    var coordGcj02 = new Array();
+    var coordGcj = new Array();
+    var coordName = new Array();
+    var coordID = new Array();
+    var coordPoint = new Array();
+    var aqi_level = new Array();  //报警级别
+    var longitude = new Array();//经度
+    var latitude = new Array();//纬度
+    var station_location = new Array();//具体位置
+    var note = new Array();//站点类型
+    var avg_so2 = new Array();//avg_so2
+    var avg_co = new Array();//avg_co
+    var avg_no2 = new Array();//avg_no2
+    var avg_o3 = new Array();//avg_o3
+    var avg_pm10 = new Array();//avg_pm10
+    var avg_pm25 = new Array();//avg_pm25
+    var aqi_class =new Array();//质量等级
+    var chief_pollutant = new Array();//首要污染物
+    var aqi = new Array(); //aqi值
+    var is_online = new Array();//根据网络用来判断点击图标弹出框的显示
+    $.each(navRouteCoords1,function(index,value){
+        if(value.aqi_class == null) {
+             aqi_class[0] = "---"
+        }else{
+            aqi_class[0] = value.aqi_class;
+        }
+        if(value.chief_pollutant == null) {
+            chief_pollutant[0] = "---";
+        }else{
+            chief_pollutant[0] = value.chief_pollutant;
+        }
+        if(value.longitude == null) {
+            coordGcj02[0] = "---";
+        }else{
+            coordGcj02[0] = value.longitude;
+        }
+        if(value.latitude == null) {
+             coordGcj02[1] = "---";
+        }else{
+             coordGcj02[1] = value.latitude;
+        }
+       if(value.station_name == null) {
+            coordName[0] = "---";
+       }else{
+            coordName[0] = value.station_name;
+       }
+       if(value.aqi_level==null){
+            aqi_level[0] = "---";
+       }else{
+            aqi_level[0] = value.aqi_level;
+       }
+       if(value.longitude == null){
+            longitude[0] = "---";
+       }else{
+            longitude[0] = value.longitude;
+       }
+       if(value.latitude == null){
+            latitude[0] = "---"
+       }else{
+            latitude[0] = value.latitude;
+       }
+        if(value.station_location == null){
+            station_location[0] = "---"
+        }else{
+            station_location[0] = value.station_location;
+        }
+        if(value.note == ""){
+             note[0] = "---"
+        }else{
+            note[0] = value.note;
+        }
+        if(value.avg_co == null){
+             avg_co[0] = "---"
+        }else{
+            avg_co[0] = value.avg_co;
+        }
+        if(value.avg_no2 == null){
+             avg_no2[0] = "---"
+        }else{
+            avg_no2[0] = value.avg_no2;
+        }
+        if(value.avg_o3 == null){
+             avg_o3[0] = "---"
+        }else{
+            avg_o3[0] = value.avg_o3;
+        }
+        if(value.avg_pm10 == null){
+             avg_pm10[0] = "---"
+        }else{
+            avg_pm10[0] = value.avg_pm10;
+        }
+        if(value.avg_pm25 == null){
+             avg_pm25[0] = "---"
+        }else{
+            avg_pm25[0] = value.avg_pm25;
+        }
+        if(value.avg_so2 == null) {
+            avg_so2[0] = "---";
+        }else{
+            avg_so2[0] = value.avg_so2;
+        }
+        if(value.aqi == null) {
+            aqi[0] = "---";
+        }else{
+            aqi[0] = value.aqi;
+        }
+        if(value.id==null) {
+            coordID[0]="---";
+        }else{
+            coordID[0]=value.id;
+        }
+        if(value.is_online==null) {
+            is_online[0]="---";
+        }else{
+            is_online[0]=value.is_online;
+        }
+        coordGcj = coordGcj02.map(function(key){
+            return Number(key);
+        });
+    
+        coordPoint = ol.proj.transform(coordGcj,"EPSG:4326","EPSG:3857");
+        //创建marker1
+        var marker1 = new ol.Feature({
+            geometry: new ol.geom.Point(coordPoint),
+            name: coordName[0],
+            longitude:longitude[0],
+            latitude:latitude[0],
+            aqi_level:aqi_level[0],
+            station_location:station_location[0],
+            note:note[0],
+            avg_so2:avg_so2[0],
+            avg_co:avg_co[0],
+            avg_no2:avg_no2[0],
+            avg_o3:avg_o3[0],
+            avg_pm10:avg_pm10[0],
+            avg_pm25:avg_pm25[0],
+            aqi_class:aqi_class[0],
+            chief_pollutant:chief_pollutant[0],
+            aqi:aqi[0],
+            coordID:coordID[0],
+            is_online:is_online[0]
+        });
+        station_type = Number(value.station_type);
+        /*根据AQI值判断图片*/
+        if(value.is_online=="Y"){
+            if(value.aqi > 0 && value.aqi <=50) {     
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle1(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }else if(value.aqi >= 51 && value.aqi <=100) {
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle2(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }else if(value.aqi >= 101 && value.aqi <=150) {
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle3(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }else if(value.aqi >= 151 && value.aqi <=200) {
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle4(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }else if(value.aqi >= 201 && value.aqi <301) {
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle5(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }else if(value.aqi >= 301) {
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle6(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+            }
+        }else{
+                marker1.setStyle(OPENLAYER_MAP.keypointStyle7(marker1));
+                OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker1);
+        }
+        routeLinePoints.push(coordPoint);
+    });
+  // OPENLAYER_MAP.initPolyline(routeLinePoints);
+  /*==================================================运维站=====================================================*/
+  /*  var navRouteCoords = OPENLAYER_MAP.markerInfos3;   //获取JSON数据
+    console.log("加载运维数据")
+    console.log(navRouteCoords);
+    //架路径，绘制关键节点
+    if(navRouteCoords == null || navRouteCoords.length == 0)return;
+    var routeLinePoints= new Array();
+    var coordGcj02 = new Array();
+    var coordGcj = new Array();
+    var coordName = new Array();
+    var coordID = new Array();
+    var coordPoint = new Array();
+    $.each(navRouteCoords,function(index,value){
+        coordGcj02[0] = value.longitude;
+        coordGcj02[1] = value.latitude;
+        coordName[0] = value.station_name;
+        coordID[0] = value.id;
+        coordGcj = coordGcj02.map(function(key){
+            return Number(key);
+        });
+        coordPoint = ol.proj.transform(coordGcj,"EPSG:4326","EPSG:3857");
+        console.log(coordPoint)
+        //创建marker
+        var marker = new ol.Feature({
+            geometry: new ol.geom.Point(coordPoint),
+            name: coordName[0],
+            coordID:coordID[0]
+        });
+        marker.setStyle(OPENLAYER_MAP.keypointStyle3(marker));
+        OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker);
+        routeLinePoints.push(coordPoint);
+    });*/
+};
+/*水站添加图标*/
+OPENLAYER_MAP.initMarkers2 = function(){
+    OPENLAYER_MAP.anchorLayer.getSource().clear();
+     OPENLAYER_MAP.popContent.innerHTML = "";
+    var navRouteCoords2 = OPENLAYER_MAP.markerInfos2;   //获取JSON数据
+    //架路径，绘制关键节点
+    if(navRouteCoords2 == null || navRouteCoords2.length == 0)return;
+    var routeLinePoints= new Array();
+    var coordGcj02 = new Array();
+    var coordGcj = new Array();
+    var coordID = new Array();
+    var coordName = new Array();
+    var coordPoint = new Array();
+    var longitude = new Array();//经度
+    var latitude = new Array();//纬度
+    $.each(navRouteCoords2,function(index,value){
+        if(value.longitude == null) {
+            coordGcj02[0] = "-";
+        }else{
+            coordGcj02[0] = value.longitude;
+        }
+        if(value.latitude == null) {
+             coordGcj02[1] = "-";
+        }else{
+             coordGcj02[1] = value.latitude;
+        }
+       if(value.station_name == null) {
+            coordName[0] = "-";
+       }else{
+            coordName[0] = value.station_name;
+       }
+       if(value.longitude == null){
+            longitude[0] = "-";
+       }else{
+            longitude[0] = value.longitude;
+       }
+       if(value.latitude == null){
+            latitude[0] = "-"
+       }else{
+            latitude[0] = value.latitude;
+       }
+       if(value.id == null){
+            coordID[0] = "-"
+       }else{
+            coordID[0] = value.id;
+       }
+        coordGcj = coordGcj02.map(function(key){
+            return Number(key);
+        });
+        coordPoint = ol.proj.transform(coordGcj,"EPSG:4326","EPSG:3857");
+        //创建marker
+        var marker2 = new ol.Feature({
+            geometry: new ol.geom.Point(coordPoint),
+            name: coordName[0],
+            longitude:longitude[0],
+            latitude:latitude[0],
+        });
+        marker2.setStyle(OPENLAYER_MAP.keypointStyle2(marker2));
+         OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker2);
+        routeLinePoints.push(coordPoint);
+    });
+    /*==================================================运维站=====================================================*/
+   /* var navRouteCoords = OPENLAYER_MAP.markerInfos3;   //获取JSON数据
+    console.log("加载运维数据")
+    console.log(navRouteCoords);
+    //架路径，绘制关键节点
+    if(navRouteCoords == null || navRouteCoords.length == 0)return;
+    var routeLinePoints= new Array();
+    var coordGcj02 = new Array();
+    var coordGcj = new Array();
+    var coordName = new Array();
+    var coordID = new Array();
+    var coordPoint = new Array();
+    var typeyw = new Array();//判断是否为运维图标--显示弹出框
+    $.each(navRouteCoords,function(index,value){
+        coordGcj02[0] = value.longitude;
+        coordGcj02[1] = value.latitude;
+        coordName[0] = value.station_name;
+        coordID[0] = value.id;
+        typeyw[0] = value.type;
+        coordGcj = coordGcj02.map(function(key){
+            return Number(key);
+        });
+        coordPoint = ol.proj.transform(coordGcj,"EPSG:4326","EPSG:3857");
+        console.log(coordPoint)
+        //创建marker
+        var marker = new ol.Feature({
+            geometry: new ol.geom.Point(coordPoint),
+            name: coordName[0],
+            coordID:coordID[0],
+            type:typeyw[0]
+        });
+        marker.setStyle(OPENLAYER_MAP.keypointStyle3(marker));
+        OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker);
+        routeLinePoints.push(coordPoint);
+    });*/
+  // OPENLAYER_MAP.initPolyline(routeLinePoints);
+};
+/*运维添加图标----不显示---注释*/
+/*OPENLAYER_MAP.initMarkers3 = function(){
+    OPENLAYER_MAP.anchorLayer.getSource().clear();
+     OPENLAYER_MAP.popContent.innerHTML = "";
+    var navRouteCoords = OPENLAYER_MAP.markerInfos3;   //获取JSON数据
+    console.log("加载")
+    console.log(navRouteCoords);
+    //架路径，绘制关键节点
+    if(navRouteCoords == null || navRouteCoords.length == 0)return;
+    var routeLinePoints= new Array();
+    var coordGcj02 = new Array();
+    var coordGcj = new Array();
+    var coordName = new Array();
+    var coordPoint = new Array();
+    $.each(navRouteCoords,function(index,value){
+        coordGcj02[0] = value.longitude;
+        coordGcj02[1] = value.latitude;
+        coordName[0] = value.station_name;
+        coordGcj = coordGcj02.map(function(key){
+            return Number(key);
+        });
+        coordPoint = ol.proj.transform(coordGcj,"EPSG:4326","EPSG:3857");
+        console.log(coordPoint)
+        //创建marker
+        var marker = new ol.Feature({
+            geometry: new ol.geom.Point(coordPoint),
+            name: coordName[0]
+        });
+        marker.setStyle(OPENLAYER_MAP.keypointStyle3(marker));
+        OPENLAYER_MAP.anchorLayer.getSource().addFeature(marker);
+        routeLinePoints.push(coordPoint);
+    });
+    //划线
+  // OPENLAYER_MAP.initPolyline(routeLinePoints);
+};*/
+//划线
+OPENLAYER_MAP.initPolyline = function(linePoints){
+    var lineFeature = new ol.Feature({
+        geometry:new ol.geom.LineString(linePoints)
+    });
+    //加入图层
+    OPENLAYER_MAP.anchorLayer.getSource().addFeature(lineFeature);
+}
+OPENLAYER_MAP.initPopUpEvents = function()
+{
+  OPENLAYER_MAP.popCloser.onclick = function() {
+        OPENLAYER_MAP.popUpItem.setPosition(undefined);
+        OPENLAYER_MAP.popCloser.blur();
+        return false;
+      };
+
+  //鼠标移动事件：触到要素变鼠标指针  
+  OPENLAYER_MAP.map.on('pointermove',function(e){  
+      var pixel = OPENLAYER_MAP.map.getEventPixel(e.originalEvent); //获取地图上的坐标  
+      var hit = OPENLAYER_MAP.map.hasFeatureAtPixel(pixel);//获取地图坐标上的要素  
+      OPENLAYER_MAP.map.getTargetElement().style.cursor = hit?'pointer':''; //设置DOM对象的指针  
+  });  
+
+   //点击事件  
+    OPENLAYER_MAP.map.on('click',function(evt){
+        console.log("mplist")
+        var ywValue_src = $(".mapList span.mapList_menu.hide").attr("value");
+        var ywValue_src1 = ywValue_src.substring(0,ywValue_src.indexOf("?"));
+        console.log(ywValue_src1)
+        $(".ol-overlay-container.ol-selectable").show();
+        var feature = OPENLAYER_MAP.map.forEachFeatureAtPixel(evt.pixel,function(feature,layer){ //获取鼠标点上的要素 
+            console.log("feature")
+            console.log(feature)
+            return feature;  
+            }  
+        );  
+        if(feature == null)return;
+        var coordinate = evt.coordinate;
+          var hdms = ol.coordinate.toStringHDMS(ol.proj.transform(
+          coordinate, 'EPSG:3857', 'EPSG:4326'));
+          if($(".mapList span.backRgb").attr("value_id")=="1"){
+                //OPENLAYER_MAP.popContent.innerHTML = "";
+                var is_online = feature.get('is_online');
+                var coordID = feature.get('coordID');
+                  /*  OPENLAYER_MAP.popContent.innerHTML = '<div class="pull-left"><p class="title">名称：<span class="undefind">'+ feature.get('name')+'</span></p>'+'<p>站点污染级别：<span class="undefind">'+feature.get('aqi_level')+
+                    '</span></p><p>质量等级：<span>'+feature.get('aqi_class')+'</span></p><p>报警内容：</p><p class="title">站点信息</p><p>具体位置：<span class="undefind">'+feature.get('station_location')+'</span></p><p>经度：<span class="undefind">'+feature.get('longitude')+'</span></p><p>纬度：<span class="undefind">'+feature.get('latitude')+'</span></p><p>类型：<span class="undefind">'+feature.get('note')+'</span></p><p>首要污染物：<span class="undefind">'+feature.get('chief_pollutant')+'</span></p><p>aqi：<span>'+feature.get('aqi')+'</span></p><p class="pollute_source cursorPointer">污染源:<a>点击查看详情</a></p><p class="title">空气质量数据：</p>'+
+                    '<table class="table table-bordered"><tbody><tr><td>SO<sub>2</sub>:<span class="undefind">'+feature.get('avg_so2')+'</span></td><td>NO<sub>2</sub>:<span class="undefind">'+feature.get('avg_no2')+'</span></td><td>PM10:<span class="undefind">'+feature.get('avg_pm10')+'</span></td></tr>'+
+                    '<tr><td>CO:<span class="undefind">'+feature.get('avg_co')+'</span></td><td>O<sub>3</sub>:<span class="undefind">'+feature.get('avg_o3')+'</span><td>PM<sub>2.5</sub>:<span class="undefind">'+feature.get('avg_pm25')+'</span></td></tr></tbody></table></div><div class="pull-right"><table class="table table-bordered opraTable"><tbody><tr><td>工单完成率</td><td class="opraDetails cursorPointer"><a>查看详情</a></td></tr><tr><td>总工单数</td><td class="task_forms_num"></td></tr><tr><td>巡检单数</td><td class="task_forms_p">'+
+                    '</td></tr><tr><td>异常检查单</td><td class="task_forms_a"></td></tr><tr><td>故障单数</td><td class="task_forms_f"></td></tr>'+
+                    '<tr><td>处理中</td><td class="task_forms_o"></td></tr><tr><td>待审核</td><td class="task_forms_u"></td></tr><tr><td>已完成</td><td class="task_forms_w"></td></tr>'+
+                    '<tr><td>完成率(%)</td><td class="task_forms_s"></td></tr></tbody></table></div>';*/
+
+                   OPENLAYER_MAP.popContent.innerHTML = '<div id="mapAlert" class="">'+
+                        '<div class="title">'+feature.get('name')+'</div>'+
+                            '<div class="col-lg-12 top">'+
+                                '<div class="mapAlert_list col-lg-3">'+
+                                   '<div class="centerLeft aqi_class">'+feature.get('aqi_class')+'</div>'+
+                                    '<div class="top-left">'+
+                                        '<p class="aqi">'+feature.get('aqi')+'</p>'+
+                                        '<p class="pollute_level">'+feature.get('aqi_level')+'</p>'+
+                                    '</div>'+
+                                    '<div class=""></div>'+
+                                '</div>'+
+                                '<div class="line col-lg-1"></div>'+
+                                '<div class="mapAlert_list col-lg-4">'+
+                                    '<div class="latLng pull-left">'+
+                                        '<p>经度<span class="longitude">'+feature.get('longitude')+'</span></p>'+
+                                        '<p>纬度<span class="latitude">'+feature.get('latitude')+'</span></p>'+
+                                    '</div>'+
+                                    '<div class="pull-right stationType">'+feature.get('note')+'</div>'+
+                                    '<div class="clear"></div>'+
+                                    '<p class="station_location centerLeft">'+
+                                        '<img src="<%= image_path("map7.jpg")%>" />'+
+                                        '<span>'+feature.get('station_location')+'</span>'+
+                                    '</p>'+
+                               '</div>'+
+                                '<div class="line col-lg-1"></div>'+
+                                '<div class="mapAlert_list col-lg-3">'+
+                                    '<p class="chief_pollutant">'+feature.get('chief_pollutant')+'</p>'+
+                                    '<p>首要污染物</p>'+
+                                    '<p class="goodBack pollute_source cursorPointer">污染源</p>'+
+                                '</div>'+
+                            '</div>'+
+                            '<div class="titleList col-lg-12">'+
+                                '<span class="listBack goodBack"></span>'+
+                                '<span>报警内容</span>'+
+                            '</div>'+
+                            '<div class="alarm_content col-lg-12">1.xx站报警,请查看</div>'+
+                            '<div class="titleList col-lg-12">'+
+                                '<span class="listBack goodBack"></span>'+
+                                '<span>空气质量数据</span>'+
+                            '</div>'+
+                            '<div class="Table_work col-lg-12">'+
+                                '<table class="table table-bordered">'+
+                                    '<thead>'+
+                                        '<tr>'+
+                                            '<th>SO<sub>2</sub></th>'+
+                                            '<th>NO<sub>2</sub></th>'+
+                                            '<th>CO</th>'+
+                                            '<th>O<sub>3</sub></th>'+
+                                            '<th>PM2.5</th>'+
+                                            '<th>PM10</th>'+
+                                        '</tr>'+
+                                    '</thead>'+
+                                    '<tbody>'+
+                                        '<tr>'+
+                                            '<td>'+feature.get('avg_so2')+'</td>'+
+                                            '<td>'+feature.get('avg_no2')+'</td>'+
+                                            '<td>'+feature.get('avg_co')+'</td>'+
+                                            '<td>'+feature.get('avg_o3')+'</td>'+
+                                            '<td>'+feature.get('avg_pm25')+'</td>'+
+                                            '<td>'+feature.get('avg_pm10')+'</td>'+
+                                        '</tr>'+
+                                    '</tbody>'+
+                                '</table>'+
+                            '</div>'+
+                            '<div class="titleList col-lg-12">'+
+                                '<span class="listBack goodBack"></span>'+
+                                '<span>运维工单信息</span>'+
+                            '</div>'+
+                            '<div class="Table_work col-lg-12">'+
+                                '<table class="airTable_work table table-bordered">'+
+                                    '<thead>'+
+                                        '<tr>'+
+                                            '<th>完成率(%)</th>'+
+                                            '<th>总工单数</th>'+
+                                            '<th>巡检单数</th>'+
+                                            '<th>异常检查单</th>'+
+                                            '<th>故障单数</th>'+
+                                            '<th>处理中</th>'+
+                                            '<th>待审核</th>'+
+                                            '<th>已完成</th>'+
+                                            '<th>操作</th>'+
+                                        '</tr>'+
+                                    '</thead>'+
+                                    '<tbody>'+
+                                        '<tr>'+
+                                            '<td class="task_forms_s"></td>'+
+                                            '<td class="task_forms_num"></td>'+
+                                            '<td class="task_forms_p"></td>'+
+                                            '<td class="task_forms_a"></td>'+
+                                            '<td class="task_forms_f"></td>'+
+                                            '<td class="task_forms_o"></td>'+
+                                            '<td class="task_forms_u"></td>'+
+                                            '<td class="task_forms_w"></td>'+
+                                            '<td class="opraDetails cursorPointer"><a>详细</a></td>'+
+                                        '</tr>'+
+                                    '</tbody>'+
+                                '</table>'+
+                            '</div>'+
+                    '</div>';
+                    /*判断AQI改变颜色*/
+                   var AQI_value = feature.get('aqi');
+                   var is_online = feature.get('is_online');
+                   if(is_online=="Y"){
+                        if(AQI_value > 0 && AQI_value <=50) {     
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#00e400");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#00e400");
+                        }else if(AQI_value >= 51 && AQI_value <=100) {
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#ffff00");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#ffff00");
+                        }else if(AQI_value >= 101 && AQI_value <=150) {
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#ff7e00");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#ff7e00");
+                        }else if(AQI_value >= 151 && AQI_value <=200) {
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#ff0000");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#ff0000");
+                        }else if(AQI_value >= 201 && AQI_value <301) {
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#99004c");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#99004c");
+                        }else if(AQI_value >= 301) {
+                            $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#7e0023");
+                            $("#mapAlert .top .top-left p.pollute_level").css("background","#7e0023");
+                        }
+                    }else{
+                         $("#mapAlert .top .mapAlert_list .aqi_class").css("color","#999999");
+                         $("#mapAlert .top .top-left p.pollute_level").css("background","#999999");
+                    }
+                 
+                    $.ajax({
+                        type:"get",
+                        url:ywValue_src1+"/order_completion/task_forms.json?id=15",
+                        dataType:'json',
+                        async:true,
+                        beforeSend:function(){
+                            $('.loading').show();
+                        },
+                        success:function(data){
+                            console.log(data);
+                            data.station.map(function(ele,index,arr){
+                                var task_forms_num = ele.task_forms_num; //总工单数
+                                console.log(task_forms_num);
+                                var task_forms_p = ele.task_forms_p;//巡检单数
+                                var task_forms_a = ele.task_forms_a;//异常检查单
+                                var task_forms_f = ele.task_forms_f; //故障单数
+                                var task_forms_o = ele.task_forms_o;//处理中
+                                var task_forms_u = ele.task_forms_u;//待审核
+                                var task_forms_w = ele.task_forms_w;//已完成
+                                console.log(Number(task_forms_w))
+                                var task_forms_s = (task_forms_w / task_forms_num).toFixed(2);  //完成率
+                                task_forms_s=="0"?"0.00":task_forms_s;
+                                console.log(task_forms_s);
+                                $("#popup .airTable_work td.task_forms_num").text(task_forms_num);
+                                $("#popup .airTable_work td.task_forms_p").text(task_forms_p);
+                                $("#popup .airTable_work td.task_forms_a").text(task_forms_a);
+                                $("#popup .airTable_work td.task_forms_f").text(task_forms_f);
+                                $("#popup .airTable_work td.task_forms_o").text(task_forms_o);
+                                $("#popup .airTable_work td.task_forms_u").text(task_forms_u);
+                                $("#popup .airTable_work td.task_forms_w").text(task_forms_w);
+                                $("#popup .airTable_work td.task_forms_s").text(task_forms_s);
+                            })
+                            $('.loading').hide();
+                        },
+                        error:function(err){
+                            console.log(err);
+                            $('.loading').hide();
+                        }
+                    });
+                    /*空气站点击查看详情--工单完成率*/
+                    $("#portalsHeader #mapContainer #popup-content table td.opraDetails").click(function(){
+                            var coordID = feature.get('coordID')
+                            $("#opraWork").modal("show");
+                                $.ajax({
+                                    type:"get",
+                                    url:ywValue_src1+"/order_completion/"+15+".json",
+                                    dataType:'json',
+                                    async:true,
+                                    beforeSend:function(){
+                                        $('.loading').show();
+                                    },
+                                    success:function(data){
+                                        console.log(data);
+                                        var result = template("opraDetails_temp",data);
+                                        $("#opraWork table tbody").html(result);
+                                        $('.loading').hide();
+                                    },
+                                    error:function(err){
+                                        console.log(err);
+                                        $('.loading').hide();
+                                    }
+                            })
+                    })
+          }else if($(".mapList span.backRgb").attr("value_id")=="2"){
+                /*水站弹出框*/
+                OPENLAYER_MAP.popContent.innerHTML = "";
+              /*  OPENLAYER_MAP.popContent.innerHTML='<table class="table table-bordered waterTable"><tbody><tr><td>站点名称:</td><td>'+feature.get('name')+'</td></tr><tr><td>污染源</td><td class="pollute_source cursorPointer"><a>查看详情</a></td></tr><tr><td>工单完成率</td><td class="opraDetails cursorPointer"><a>查看详情</a></td></tr><tr><td>总工单数</td><td class="task_forms_num"></td></tr><tr><td>巡检单数</td><td class="task_forms_p">'+
+                '</td></tr><tr><td>异常检查单</td><td class="task_forms_a"></td></tr><tr><td>故障单数</td><td class="task_forms_f"></td></tr>'+
+                '<tr><td>处理中</td><td class="task_forms_o"></td></tr><tr><td>待审核</td><td class="task_forms_u"></td></tr><tr><td>已完成</td><td class="task_forms_w"></td></tr>'+
+                '<tr><td>完成率(%)</td><td class="task_forms_s"></td></tr></tbody></table>';*/
+
+                OPENLAYER_MAP.popContent.innerHTML = '<div id="mapAlert" class="">'+
+                        '<div class="title">'+feature.get('name')+'</div>'+
+                            '<div class="col-lg-12 top">'+
+                                '<div class="mapAlert_list col-lg-3">'+
+                                   '<div class="centerLeft aqi_class">---</div>'+
+                                    '<div class="top-left">'+
+                                        '<p class="aqi">---</p>'+
+                                        '<p class="pollute_level">---</p>'+
+                                    '</div>'+
+                                    '<div class=""></div>'+
+                                '</div>'+
+                                '<div class="line col-lg-1"></div>'+
+                                '<div class="mapAlert_list col-lg-4">'+
+                                    '<div class="latLng pull-left">'+
+                                        '<p>经度<span class="longitude">'+feature.get('longitude')+'</span></p>'+
+                                        '<p>纬度<span class="latitude">'+feature.get('latitude')+'</span></p>'+
+                                    '</div>'+
+                                    '<div class="pull-right stationType">---</div>'+
+                                    '<div class="clear"></div>'+
+                                    '<p class="station_location centerLeft">'+
+                                        '<img src="<%= image_path("map7.jpg")%>" />'+
+                                        '<span>---</span>'+
+                                    '</p>'+
+                               '</div>'+
+                                '<div class="line col-lg-1"></div>'+
+                                '<div class="mapAlert_list col-lg-3">'+
+                                    '<p class="chief_pollutant">---</p>'+
+                                    '<p>首要污染物</p>'+
+                                    '<p class="goodBack pollute_source cursorPointer">污染源</p>'+
+                                '</div>'+
+                            '</div>'+
+                            '<div class="titleList col-lg-12">'+
+                                '<span class="listBack goodBack"></span>'+
+                                '<span>报警内容</span>'+
+                            '</div>'+
+                            '<div class="alarm_content col-lg-12">1.xx站报警,请查看</div>'+
+                    '</div>';
+                 $.ajax({
+                        type:"get",
+                        url:ywValue_src1+"/order_completion/task_forms.json?id=15",
+                        dataType:'json',
+                        async:true,
+                        beforeSend:function(){
+                            $('.loading').show();
+                        },
+                        success:function(data){
+                            console.log(data);
+                            data.station.map(function(ele,index,arr){
+                                var task_forms_num = ele.task_forms_num; //总工单数
+                                console.log(task_forms_num);
+                                var task_forms_p = ele.task_forms_p;//巡检单数
+                                var task_forms_a = ele.task_forms_a;//异常检查单
+                                var task_forms_f = ele.task_forms_f; //故障单数
+                                var task_forms_o = ele.task_forms_o;//处理中
+                                var task_forms_u = ele.task_forms_u;//待审核
+                                var task_forms_w = ele.task_forms_w;//已完成
+                                console.log(Number(task_forms_w))
+                                var task_forms_s = (task_forms_w / task_forms_num).toFixed(2);  //完成率
+                                task_forms_s=="0"?"0.00":task_forms_s;
+                                console.log(task_forms_s);
+                                $("#popup .waterTable td.task_forms_num").text(task_forms_num);
+                                $("#popup .waterTable td.task_forms_p").text(task_forms_p);
+                                $("#popup .waterTable td.task_forms_a").text(task_forms_a);
+                                $("#popup .waterTable td.task_forms_f").text(task_forms_f);
+                                $("#popup .waterTable td.task_forms_o").text(task_forms_o);
+                                $("#popup .waterTable td.task_forms_u").text(task_forms_u);
+                                $("#popup .waterTable td.task_forms_w").text(task_forms_w);
+                                $("#popup .waterTable td.task_forms_s").text(task_forms_s);
+                            })
+                            $('.loading').hide();
+                        },
+                        error:function(err){
+                            console.log(err);
+                            $('.loading').hide();
+                        }
+                    });
+                    /*水站点击查看详情--工单完成率*/
+                    $("#portalsHeader #mapContainer #popup-content table.waterTable td.opraDetails").click(function(){
+                            console.log($("#portalsHeader #mapContainer #popup-content table.waterTable").html());
+                            var coordID = feature.get('coordID')
+                            $("#opraWork").modal("show");
+                                $.ajax({
+                                    type:"get",
+                                    url:ywValue_src1+"/order_completion/"+15+".json",
+                                    dataType:'json',
+                                    async:true,
+                                    beforeSend:function(){
+                                        $('.loading').show();
+                                    },
+                                    success:function(data){
+                                        console.log(data);
+                                        var result = template("opraDetails_temp",data);
+                                        $("#opraWork table tbody").html(result);
+                                        $('.loading').hide();
+                                    },
+                                    error:function(err){
+                                        console.log(err);
+                                        $('.loading').hide();
+                                    }
+                            })
+                    })
+
+          }
+           /*运维单独不显示--注释*/
+          /*else if($(".mapList span.backRgb").attr("value_id")=="3"){
+            OPENLAYER_MAP.popContent.innerHTML = "";
+             OPENLAYER_MAP.popContent.innerHTML = '<p>站点名称：<span>'+ feature.get('name')+'</span></p>';
+          }*/
+          OPENLAYER_MAP.popUpItem.setPosition(coordinate);
+            //水质监测站点详情
+            console.log($("#portalsHeader #mapContainer #popup-content").html());
+            $("#portalsHeader #mapContainer #popup-content p.station-details a").click(function(){
+                $("#portalsHeader .container").html("");
+                $("#portalsHeader > .container").append('<iframe frameborder="0" scrolling="no" name="nav" src="http://172.168.10.7:3020/st_data_search/latest_data"></iframe>');
+            });
+            /*污染源模态框显示*/
+            $("#portalsHeader #mapContainer #popup-content .pollute_source").click(function(){
+                var stationName = $(this).parent("#popup-content").find("p.title span.undefind").text();
+                console.log(stationName);
+                $("#pollute_alertFirst table.table tbody td.stationName").text(feature.get('name'));
+                $("#pollute_alertFirst").modal("show");
+            })
+            /*点击运维图标查看*/
+            $("#portalsHeader #mapContainer #popup-content p.opraLook").click(function(){
+                var opraID = $(this).prev().find("span").text();
+                console.log(opraID);
+            });
+            
+
+    }  
+   );
+   
+};

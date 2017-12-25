@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<title>opoenlayers - 测试</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link rel="stylesheet" type="text/css" href="v4.2.0-dist\ol.css">
+	<link rel="stylesheet" type="text/css" href="bootstrap\css\bootstrap.min.css">
+   <script type="text/javascript" src = "jquery\jquery.js"></script> 
+  <script type="text/javascript" src="js/echarts.js"></script>
+	<script type="text/javascript" src = "v4.2.0-dist\ol.js"></script>
+  <script type="text/javascript" src = "js/wind.js"></script>
+  
+	<style type="text/css">
+		html,body{
+			margin: 0px;
+			padding: 0px;
+			width: 100%;
+			height: 100%;
+		}
+
+		#mapContainer{
+			width: 100%;
+			height: 100%;
+			margin: 0px;
+			padding: 0px;
+		}
+
+		.exchange-maptype{
+			background-color: rgba(255,255,255,.4);position: absolute;top: 10px;right: 10px;height: 36px;width: 72px;z-index: 999;padding: 2px;border-radius: 6px;border: none;
+		}
+
+		.maptype{
+			color: #fff;font-size: 1.0em;font-weight: 700;background-color: rgba(0,60,136,.5);line-height: 32px;text-align: center;cursor: pointer;border-radius: 6px;
+		}
+
+		.maptype:hover{
+			background-color: rgba(0,60,136,.8)
+		}
+
+		.ol-popup {
+        position: absolute;
+        background-color: white;
+        -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+        filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #cccccc;
+        bottom: 12px;
+        left: -50px;
+        min-width: 280px;
+      }
+      #popup-content {
+        box-shadow: 0px 0px 1px 1px #f00;
+        margin-top: 14px;
+        background: #f7f7f7;
+      }
+      #popup-content p {
+        padding-left: 4px;
+        margin: 2px;
+      }
+      #popup-content p.title {
+          background: #4da904;
+          height: 30px;
+          line-height: 30px;
+          margin:0;
+      }
+      .ol-popup:after, .ol-popup:before {
+        top: 100%;
+        border: solid transparent;
+        content: " ";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+      }
+      .ol-popup:after {
+        border-top-color: white;
+        border-width: 10px;
+        left: 48px;
+        margin-left: -10px;
+      }
+      .ol-popup:before {
+        border-top-color: #cccccc;
+        border-width: 11px;
+        left: 48px;
+        margin-left: -11px;
+      }
+      .ol-popup-closer {
+        text-decoration: none;
+        position: absolute;
+        top: 2px;
+        right: 8px;
+      }
+      .ol-popup-closer:after {
+        content: "✖";
+      }
+
+      .clear {
+        clear: both;
+      }
+      .line{
+        background: #ccc;
+        width: 1px;
+        height: 10px;
+        display: inline-block;
+        height: 24px;
+        vertical-align: 22%;
+      }
+      .monitor-left, .monitor-right {
+        height: 100%;
+        border: 1px solid #d2dde1;
+        position: absolute;
+        top:20px;
+        bottom:40px;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 1px 1px 4px 4px #ccc;
+        padding:0;
+        color: #333;
+        /*text-align: center;*/
+      }
+      .monitor-left {
+        left: 10px;
+      }
+      .monitor-right {
+        right: 10px;
+        background: #f0f0f0;
+      }
+      .top {
+        padding-top: 10px;
+        text-align: center;
+      }
+      .top .list {
+        display: inline-block;
+        text-align: center;
+        padding:0 12px;
+      }
+      .top .list p {
+        margin: 0;
+      }
+      .title {
+        height: 28px;
+        line-height: 28px;
+        background: #7494c0;
+        color: #fff;
+        padding: 0 10px;
+      }
+      .table thead {
+        background: #d0d0d0;
+      }
+      .table thead th {
+        text-align: center;
+        font-weight: 400;
+      }
+      .table>thead>tr>th {
+        border-bottom:none;
+      }
+       .table tbody td {
+         text-align: center;
+       }
+       .monitor-right .top .list {
+         padding: 0 36px;
+       }
+       .monitor-right .top {
+         background: #fff;
+         padding-bottom: 6px;
+       }
+       .monitor-right .top .details {
+         color: #4da904;
+       }
+       .monitor-right .content .list .pull-left span {
+         width: 4px;
+         height: 10px;
+         background: #4da904;
+         display: inline-block;
+       }
+       .monitor-right .content {
+         padding-top: 10px;
+       }
+       .monitor-right .content .content-top {
+         background: #fff;
+       }
+       .monitor-right .content .content-bottom {
+         margin-top:10px;
+         background: #fff;
+       }
+       .monitor-right .title {
+         margin-top: 10px;
+       }
+       .mapList {
+         position: absolute;
+         top: 20px;
+         height: 34px;
+         line-height: 34px;
+         text-align: center;
+         left: 36%;
+         background: rgba(0,0,0,0.6);
+         border-radius: 4px;
+       }
+       .mapList span {
+         border-right: 1px solid #fff;
+         color: #fff;
+         cursor: pointer;
+       }
+	</style>
+</head>
+<body>
+	<div id="mapContainer" class="container-fluid" style="position: relative;">
+		<div id="txt-coords" style="right: 10px;bottom: 10px;z-index: 999;position: absolute;background-color: white;color: red;"></div>
+	</div>
+	<div id="popup" class="ol-popup" style="z-index:9999;">
+    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+    <div id="popup-content"></div>
+  </div>
+  <!--<div id="label">测试中。。</div>
+  <div class="monitor-left col-lg-3">
+    <div class="top">
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>全部</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>紧急</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>中等</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>一般</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>正常</p>
+      </div>
+    </div>
+    <div class="title">警报信息
+      <div class="pull-right">2017-11-07 16:00</div>
+    </div>
+    <table class="table">
+      <thead>
+        <th>城市</th>
+        <th>站点</th>
+        <th>状态</th>
+        <th>警报信息</th>
+      </thead>
+      <tbody>
+        <td>商丘市</td>
+        <td>站点</td>
+        <td>异常</td>
+        <td>报警信息显示</td>
+      </tbody>
+    </table>
+    
+  </div>
+  <div class="mapList">
+    <span class="col-lg-4">空气检测</span>
+    <span class="col-lg-4">水质监测</span>
+    <span class="col-lg-4">运维管理</span>
+  </div>
+  <div class="monitor-right col-lg-3">
+    <div class="top">
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>日报</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>周报</p>
+      </div>
+      <div class="line"></div>
+      <div class="list">
+          <p class="glyphicon glyphicon-th-large"></p>
+          <p>月报</p>
+      </div>
+    </div>
+    <div class="title">本日已处理运维工作报告
+    </div>
+    <div class="content col-lg-12">
+      <div class="content-top col-lg-12">
+          <div class="list">
+            <div class="top">
+              <div class="pull-left">
+                <span></span>
+                计划任务:
+              </div>
+              <div class="pull-right details">查看详情</div>
+              <div class="clear"></div>
+            </div>
+            <p>本日已完成480个工作任务，目前还有246个工作任务待处理。</p>
+          </div>
+          <div class="list">
+            <div class="top">
+              <div class="pull-left">
+                <span></span>
+                计划外检查:
+              </div>
+              <div class="pull-right details">查看详情</div>
+              <div class="clear"></div>
+            </div>
+            <p>本日已完成480个工作任务，目前还有246个工作任务待处理。</p>
+          </div>
+          <div class="list">
+            <div class="top">
+              <div class="pull-left">
+                <span></span>
+                站点维护:
+              </div>
+              <div class="pull-right details">查看详情</div>
+              <div class="clear"></div>
+            </div>
+            <p>本日已完成480个工作任务，目前还有246个工作任务待处理。</p>
+          </div>
+      </div>
+      <div class="content-bottom col-lg-12">
+         <div class="list">
+            <div class="top">
+              <div class="pull-left">
+                <span></span>
+                报警异常:
+              </div>
+              <div class="pull-right details">查看详情</div>
+              <div class="clear"></div>
+            </div>
+            <p>本日已完成480个工作任务，目前还有246个工作任务待处理。</p>
+          </div>
+      </div>
+      <!--<div class="title">最近一月报警类型同级</div>-->
+    </div>
+     <div class="title col-lg-12">最近一月报警类型统计</div>
+     <div id="line" class="col-lg-12" style="height:160px;">
+
+     </div>
+  </div>-->
+</body>
+</html>
+<script type="text/javascript" src = "js\OpenLayersWms.js"></script>
+<!--<script type="text/javascript" src = "js\winddata.js"></script>-->
+
+
+

@@ -1,0 +1,5 @@
+	{"resultMsg":"success","resultData":{"navCoodInfos":[
+	    {"X":113.65,"Y":34.67,"Z":1,"Azimuth":"3.141593","Kind":6,"name":"郑州",describe:"郑州中心位置"},
+	    {"X":114.35,"Y":34.79,"Z":1,"Azimuth":"3.141593","Kind":6,"name":"开封",describe:"开封位置"},
+	    {"X":112.44,"Y":34.70,"Z":1,"Azimuth":"3.141593","Kind":6,"name":"洛阳",describe:"洛阳位置显示"},
+    ]},"resultCode":200};
